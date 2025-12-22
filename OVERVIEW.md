@@ -29,8 +29,7 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
        - Downloads TinyShakespeare dataset (1.1 MB text, Shakespeare's works)
        - Saves as UTF-8 text file
 
-     - self.train_tokenizer()
-        |
+     - self.train_tokenizer()        |
          - Step 1: Tokenizer Initialization
 
             ```bash
@@ -69,14 +68,14 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
                         4. Add AB to vocabulary
                     ```
             - unk_token="[UNK]": Token for unknown/out-of-vocabulary words
-        -> Step 2: Pre-tokenizer Setup
+        - Step 2: Pre-tokenizer Setup
             ```
             tokenizer.pre_tokenizer = Whitespace()
             ```
             - **Purpose**: Splits text into words before BPE
             - **Example**: "hello world!" → ["hello", "world!"]
             - Preserves punctuation attached to words
-        -> Step 3: Trainer Configuration
+        - Step 3: Trainer Configuration
             ```
             BpeTrainer(special_tokens=["[UNK]", "[CLS]", "[SEP]", "[PAD]", "[MASK]"], vocab_size=vocab_size) 
             ```
@@ -149,7 +148,7 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
                     # Output should be: "cat" and "mat"
                     ```
             - **vocab_size**: Maximum vocabulary size (50,000 tokens)
-        -> Step 4: Training Process
+        - Step 4: Training Process
             ```
             tokenizer.train(files, trainer)
             ```
@@ -167,7 +166,7 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
                     - Repeat until reaching vocab_size
             Special Tokens: Always included regardless of frequency
             ```
-        -> Step 5: Saving & Loading
+        - Step 5: Saving & Loading
             ```
             tokenizer.save(self.tokenizer_file)  # Saves as JSON
             tokenizer = Tokenizer.from_file(self.tokenizer_file)  # Loads from JSON
@@ -197,12 +196,12 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
                 "pre_tokenizer": {"type": "Whitespace"}
                 }
            ```
-     -> tokenizer.encode(text).ids "Encoding Process"
+     - **tokenizer.encode(text).ids** "Encoding Process"
          Flow:
             - pre_tokenizer: Split by whitespace → ["Hello", "world!"]
             - BPE: Apply merges → ["Hello", "world", "!"] (if "world" in vocab)
             - Convert to IDs using vocabulary mapping
-     -> Train/Val/Test Split
+     - **Train/Val/Test** Split
         ```
         n = len(data)
         train_end = int(0.8 * n)
@@ -211,14 +210,14 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
         val_data = data[train_end:val_end]  # 10%
         test_data = data[val_end:]       # 10%
         ```
-     -> File Saving
+     - **File Saving**
         ```
         torch.save(train_data, "train.pt")  # PyTorch tensor format
         ```
         Format: PyTorch tensor (.pt file) of dtype torch.long
             - Memory efficient binary format
             - Directly loadable with torch.load()
-     -> Directory Structure After Execution
+     - **Directory Structure After Execution**
         ```
         data/
         ├── input.txt              # Raw Shakespeare text (1MB)
