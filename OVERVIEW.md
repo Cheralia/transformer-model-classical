@@ -22,7 +22,7 @@ Inside main `dh = DataHandler()` call the __init__ function of DataHandler class
 
 2. **Tokenize**: Using the object dh `dh.prepare_tensors()` call the prepare_tensors() inside DataHandler class:
 
-    prepare_tensors()
+    `prepare_tensors()`
      - self.download_data() 
        - Checks if input.txt already exists
        - Downloads TinyShakespeare dataset (1.1 MB text, Shakespeare's works)
@@ -280,17 +280,118 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
 model.train()
 ```
 
-- Batching: create mini-batches of shape (batch_size, seq_len) and move to device (CPU/GPU)
-- Loss: Cross-entropy between model logits and target token IDs (PyTorch: `nn.CrossEntropyLoss()`)
-- 
-- Training loop (per step):
-    1. zero gradients
-    2. forward pass: outputs = model(input_ids) → logits of shape (B, S, V)
-    3. compute loss: loss = CE(logits.view(-1, V), targets.view(-1))
-    4. backward: loss.backward() (optionally gradient clip)
-    5. optimizer.step(); scheduler.step() (if used)
-    6. checkpointing: save model state_dict, optimizer state, and tokenizer periodically
+- `model.train()` is a built-in PyTorch function that switches a neural network to training mode. It's like telling your model: "Now we're practicing, so use all your training techniques."
+- You use model.train() to ensure your model learns properly during training by activating dropout regularization, and model.eval() to get accurate performance measurements during validation by deactivating it.
+    ```bash
+    # Phase 1: Practice (Training)
+    model.train()  # "Activate practice mode - ignore 10% randomly"
+    # Model learns with partial information to avoid over-memorizing
 
+    # Phase 2: Test (Validation)
+    model.eval()   # "Deactivate practice mode - use everything!"
+    # Model shows what it really knows using all information
+    ```
+
+```bash
+iters_per_epoch = len(train_data) // (BATCH_SIZE * BLOCK_SIZE)
+```
+- This calculates how many training steps fit in one epoch. The `//` is integer division in Python: 
+    - rounds DOWN to nearest whole number and 
+    - drops any remainder.
+- Example 
+    ```bash
+    len(train_data) = 1,000,000 tokens
+    BATCH_SIZE = 32
+    BLOCK_SIZE = 128
+
+    iters_per_epoch = 1,000,000 // (32 × 128)
+                    = 1,000,000 // 4,096
+                    = 244 steps per epoch
+
+    # Each step processes: 32 batches × 128 tokens = 4,096 tokens
+    # Total tokens per epoch: 244 × 4,096 = 999,424 tokens
+    # Remaining 576 tokens (0.06%) are IGNORED
+    ```
+- Get Batch of Data
+    ```bash
+    xb, yb = get_batch(train_data, BLOCK_SIZE, BATCH_SIZE)
+    ```
+
+    - Randomly selects 32 starting positions (batch_size=32) Creates:
+        - xb: Input batch shape (32, 128) - 32 sequences, each 128 tokens
+        - yb: Target batch shape (32, 128) - same as xb but shifted 1 token forward
+        - example
+        ```bash
+        If text is: "the cat sat on the mat"
+        xb: ["the cat sat on the "] (128 tokens)
+        yb: [" cat sat on the mat"] (128 tokens shifted)
+        ```
+
+- Forward Pass (Make Predictions)
+    ```bash
+    _, loss = model(xb, yb)
+    ```
+    - model(xb, yb): Transformer processes xb through all layers
+    - Returns:
+        - logits: Predicted next tokens (ignored with _)
+        - loss: How wrong predictions were (single number)
+    - Loss calculation:
+        - Compares predicted tokens vs actual tokens (yb)
+        - Uses cross-entropy: -log(probability of correct token)
+- Backpropagation Setup
+    ```bash
+    optimizer.zero_grad()
+    ```
+    - Clears previous gradient calculations
+    - Each training step needs fresh gradients
+    - `Analogy`: Erases old chalkboard before new calculation
+
+- Calculate Gradients
+    ```bash
+    loss.backward()
+    ```
+    - Computes how much each parameter contributed to error
+    - Uses chain rule (calculus) to propagate error backward
+    - Stores gradients in parameter's .grad attribute
+- Update Parameters
+    ```bash
+    optimizer.step()
+    ```
+    - AdamW optimizer uses gradients to update all weights
+    - Formula: weight = weight - learning_rate × adjusted_gradient
+    - Result: Model becomes slightly better at predicting next token
+- Log Progress
+    ```bash
+    if i % 10 == 0:
+        perplexity = math.exp(loss.item())
+        logger.info(...)
+    ```
+    - loss.item(): Extracts Python float from loss tensor
+    - math.exp(loss): Converts loss to perplexity
+        - Loss 2.0 → Perplexity 7.39
+        - Loss 1.0 → Perplexity 2.72
+        - Lower perplexity = better model
+    - Logs: Epoch, batch number, loss, perplexity
+- Validation Phase (After All Batches)
+    ```bash
+    model.eval()
+    with torch.no_grad():
+        vx, vy = get_batch(val_data, BLOCK_SIZE, BATCH_SIZE)
+        _, vloss = model(vx, vy)
+        val_ppl = math.exp(vloss.item())
+        logger.info(...)
+    ```
+    - model.eval(): Turns off dropout (uses all neurons)
+    - torch.no_grad(): No gradient calculation (saves memory)
+    - Process validation batch: Same as training but no weight updates
+    - model.train(): Switches back to training mode
+- Save Model
+    ```bash
+    torch.save(model.state_dict(), "model.pth")
+    ```
+    - Saves all trained weights to file model.pth
+    - state_dict(): Dictionary of all parameter names and values
+    - Can reload later: model.load_state_dict(torch.load("model.pth"))
 Important training details: use a causal (autoregressive) attention mask for next-token prediction so each position can only attend to previous positions; evaluate with perplexity = exp(average_loss).
 
 ## Model architecture (file: `architecture.py`)
