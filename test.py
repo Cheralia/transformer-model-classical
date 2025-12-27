@@ -17,32 +17,24 @@ def generate_text(model, tokenizer, start_text, max_new_tokens=200):
         print(f"Error encoding text: {e}")
         return ""
 
-    # If prompt is empty, start with a random token (or a specific start token if known)
     if not ids:
         ids = [0] 
         
     idx = torch.tensor([ids], dtype=torch.long).to(DEVICE)
     
-    # Generation loop
     for _ in range(max_new_tokens):
-        # Crop context if it exceeds the block size
         idx_cond = idx if idx.size(1) <= 128 else idx[:, -128:]
         
-        # Get predictions
         logits, _ = model(idx_cond)
         
-        # Focus only on the last time step
         logits = logits[:, -1, :] 
         
-        # Apply temperature (optional, makes it less random if < 1.0)
         logits = logits / 1.0 
         
         probs = torch.nn.functional.softmax(logits, dim=-1)
         
-        # Sample from the distribution
         idx_next = torch.multinomial(probs, num_samples=1)
         
-        # Append to the sequence
         idx = torch.cat((idx, idx_next), dim=1)
         
     return tokenizer.decode(idx[0].tolist())
@@ -62,7 +54,6 @@ def main():
         print("Error: Could not find 'model.pth' or 'data/tokenizer.json'. Did you run train.py?")
         sys.exit(1)
     
-    # 1. Test Perplexity 
     try:
         test_data = torch.load("data/test.pt")
         model.eval()
@@ -76,7 +67,6 @@ def main():
     except:
         print("Could not load test.pt, skipping perplexity check.\n")
 
-    # 2. Interactive Loop
     print("----------------------------------------------------------------")
     print("INTERACTIVE MODE")
     print("Type a prompt and press Enter. Type 'exit' or 'quit' to stop.")

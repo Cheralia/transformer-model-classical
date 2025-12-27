@@ -80,19 +80,15 @@ class Transformer(nn.Module):
         super().__init__()
         self.config = config
         
-        # Word Embeddings
         self.token_embedding = nn.Embedding(config.vocab_size, config.n_embd)
         
-        # Position Embeddings (classical approach - learnable absolute positional embeddings)
         self.position_embedding = nn.Embedding(config.block_size, config.n_embd)
         
-        # Transformer blocks
         self.blocks = nn.Sequential(*[Block(config) for _ in range(config.n_layer)])
         
         self.ln_f = nn.LayerNorm(config.n_embd)
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
         
-        # Weight tying
         self.token_embedding.weight = self.lm_head.weight
         
         self.apply(self._init_weights)
@@ -107,23 +103,17 @@ class Transformer(nn.Module):
 
     def forward(self, idx, targets=None):
         B, T = idx.size()
-        
-        # Token embeddings
         tok_emb = self.token_embedding(idx)
         
-        # Position embeddings
         pos = torch.arange(0, T, dtype=torch.long, device=idx.device).unsqueeze(0)  # (1, T)
         pos_emb = self.position_embedding(pos)
         
-        # Combine token and position embeddings
         x = tok_emb + pos_emb
         
-        # Forward through transformer blocks
         x = self.blocks(x)
         x = self.ln_f(x)
 
         if targets is None:
-            # Return only the last token's logits for generation
             return self.lm_head(x[:, [-1], :]), None
         
         logits = self.lm_head(x)

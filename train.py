@@ -4,7 +4,7 @@ import math
 import logging
 import torch
 from tokenizer.tokenizer import DataHandler
-from architecture.architecture import Transformer, ModelConfig  # Changed import
+from architecture.architecture import Transformer, ModelConfig 
 
 logging.basicConfig(
     level=logging.INFO,
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 32
 BLOCK_SIZE = 128
 LEARNING_RATE = 3e-4
-EPOCHS = 50  
+EPOCHS = 5 
 DEVICE = 'cpu'
 
 def get_batch(data, block_size, batch_size):
@@ -28,21 +28,18 @@ def get_batch(data, block_size, batch_size):
 def main():
     logger.info("Starting preparation...")
     
-    # 1. Prepare Data
     dh = DataHandler()
     vocab_size = dh.prepare_tensors()
     train_data = torch.load("data/train.pt")
     val_data = torch.load("data/val.pt")
     
-    # 2. Init Model
     config = ModelConfig(vocab_size=vocab_size, block_size=BLOCK_SIZE)
-    model = Transformer(config).to(DEVICE)  # Changed to Transformer
+    model = Transformer(config).to(DEVICE)  
     optimizer = torch.optim.AdamW(model.parameters(), lr=LEARNING_RATE)
     
     logger.info(f"Model initialized on {DEVICE}. Parameters: {sum(p.numel() for p in model.parameters())/1e6:.2f}M Vocab Size: {vocab_size}")
     logger.info("Classical Transformer with learnable positional embeddings.")
 
-    # 3. Training Loop
     model.train()
     start_time = time.time()
     
@@ -52,7 +49,6 @@ def main():
         logger.info(f"--- Epoch {epoch+1}/{EPOCHS} ---")
         
         for i in range(iters_per_epoch):
-            # Training Step
             xb, yb = get_batch(train_data, BLOCK_SIZE, BATCH_SIZE)
             _, loss = model(xb, yb)
             
@@ -60,12 +56,10 @@ def main():
             loss.backward()
             optimizer.step()
             
-            # Logging
             if i % 10 == 0:
                 perplexity = math.exp(loss.item())
                 logger.info(f"Epoch {epoch+1} | Batch {i+1}/{iters_per_epoch} | Loss: {loss.item():.4f} | Perplexity: {perplexity:.2f}")
 
-        # Validation at end of epoch
         model.eval()
         with torch.no_grad():
             vx, vy = get_batch(val_data, BLOCK_SIZE, BATCH_SIZE)
@@ -74,7 +68,6 @@ def main():
             logger.info(f"End of Epoch {epoch+1} VALIDATION | Loss: {vloss.item():.4f} | Perplexity: {val_ppl:.2f}")
         model.train()
 
-    # Save Model
     torch.save(model.state_dict(), "model.pth")
     logger.info(f"Training complete in {time.time()-start_time:.2f}s. Model saved to model.pth")
 
