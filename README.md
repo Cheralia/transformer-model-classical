@@ -81,3 +81,5 @@ After training, run evaluation on the held-out test set and generate text:
 python3 test.py
 
 ```
+
+Add instructions for plotting perplexity per epoch in README
