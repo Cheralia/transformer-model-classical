@@ -73,3 +73,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # PR practice: added code to track and plot perplexity per epoch
