@@ -1,6 +1,7 @@
 import os
 import requests
 import torch
+import random
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
@@ -44,15 +45,28 @@ class DataHandler:
         print("Encoding data...")
         ids = tokenizer.encode(text).ids
         data = torch.tensor(ids, dtype=torch.long)
-        
-        # Split: 80% Train, 10% Val, 10% Test
+
+        # Split into fixed-size chunks, then shuffle chunk ORDER (with a fixed
+        # seed for reproducibility) before assigning to train/val/test. This
+        # avoids the previous contiguous 80/10/10 cut, where val/test were
+        # simply whichever play(s) happened to sit at the end of the file --
+        # a different distribution than most of train, not just "held out".
+        # Chunks themselves stay internally contiguous so local context/coherence
+        # within a chunk is preserved; only the assignment order is shuffled.
+        chunk_size = 512
         n = len(data)
-        train_end = int(0.8 * n)
-        val_end = int(0.9 * n)
-        
-        train_data = data[:train_end]
-        val_data = data[train_end:val_end]
-        test_data = data[val_end:]
+        n_chunks = n // chunk_size
+        chunks = [data[i*chunk_size:(i+1)*chunk_size] for i in range(n_chunks)]
+
+        rng = random.Random(42)
+        rng.shuffle(chunks)
+
+        train_end = int(0.8 * n_chunks)
+        val_end = int(0.9 * n_chunks)
+
+        train_data = torch.cat(chunks[:train_end])
+        val_data = torch.cat(chunks[train_end:val_end])
+        test_data = torch.cat(chunks[val_end:])
         
         torch.save(train_data, os.path.join(self.data_path, "train.pt"))
         torch.save(val_data, os.path.join(self.data_path, "val.pt"))
